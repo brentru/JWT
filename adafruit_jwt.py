@@ -44,7 +44,7 @@ Implementation Notes
 import time
 import json
 from adafruit_rsa import PrivateKey, sign
-from adafruit_jwt.tools import string
+from adafruit_jwt.tools.string import b42_urlsafe_encode
 
 try:
     from binascii import b2a_base64
@@ -56,41 +56,63 @@ __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_JWT.git"
 
 # 4.1. Registered Claim names
-reg_claims = {"iss", "sub", "aud",
-              "exp", "nbf", "iat",
-              "jti"}
+CLAIM_SET = {"iss": None, "sub": None, "aud": None,
+              "exp": None, "nbf": None, "iat": None,
+              "jti": None}
 
 class JWT:
     """JSON Web Token helper for CircuitPython.
-        :param dict claims: JSON object whose members are the
-                            claims conveyed by the JWT.
         :param str algo: Encryption algorithm used for claims. Can be None.
     Warning: JWTs are credentials, which can grant access to resources.
                 Be careful where you paste them!
 
     """
-    def __init__(self, claims, algo="RSA"):
-        self._claims = claims
-        self._algo =algo
-        # 4.1. Registered Claim Names
-        self._iss = None
-        self._sub = None
-        self._aud = None
-        self._exp = None
-        self._nbf = None
-        self._iat = None
-        self._jti = None
-    
-    def create_jwt(self, private_key_data):
+
+    def __init__(self, algo="RSA"):
+        self._algo = algo
+
+    def create_jwt(self, claims, private_key_data):
         """Creates and returns a new JSON Web Token.
         :param str: Decoded RSA private key data.
         """
         # Create a private key object with private_key_data
         if self._algo == "RSA":
-            priv_key = PrivateKey(*self.private_key_data)
+            print("Creating private key...")
+            priv_key = PrivateKey(*private_key_data)
         else:
-            raise TypeError("This library currently only supports RSA private keys.")
+            raise TypeError(
+                "This library currently only supports RSA private keys.")
         # Create a JWT Claims Set containing the provided claims.
         # https://tools.ietf.org/html/rfc7519#section-7.1
         # Decode the provided claims, starting with Registered Claim Names
-
+        claim = None
+        for claim in claims:
+            print(claim)
+            print(CLAIM_SET)
+            if claim in CLAIM_SET:
+                CLAIM_SET[claim] = claims[claim]
+            # Check the Private Claim Names
+            if claim not in CLAIM_SET:
+                CLAIM_SET[claim] = claims[claim]
+        # Encode the claims set
+        claim_set = b42_urlsafe_encode(json.dumps(CLAIM_SET).encode("utf-8"))
+        # Create the JOSE Header
+        # https://tools.ietf.org/html/rfc7519#section-5
+        jose_header = {
+            "alg" : self._algo,
+            "type" : "jwt"
+        }
+        # Encode the jose_header
+        jose_header = b42_urlsafe_encode(json.dumps(jose_header).encode("utf-8"))
+        # Build the full payload to-be-encoded
+        # TODO: this could all be done in one step within format method...
+        payload = "{}.{}".format(jose_header, claim_set)
+        # Compute the signature
+        if self._algo == None:
+            jwt = "{}.{}".format(jose_header, claim_set)
+        elif self._algo == "RSA":
+            signature = b42_urlsafe_encode(sign(payload, priv_key, "SHA-256"))
+            jwt = "{}.{}".format(payload, signature)
+        print("generating..")
+        print("JWT: ", jwt)
+        return jwt
