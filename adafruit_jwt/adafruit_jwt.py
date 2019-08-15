@@ -55,6 +55,7 @@ except ImportError:
 __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_JWT.git"
 
+
 class JWT:
     """JSON Web Token helper for CircuitPython.
         :param str algo: Encryption algorithm used for claims. Can be None.
@@ -67,13 +68,12 @@ class JWT:
         self._algo = algo
         self._claim_set = {}
 
-
     def validate(self, jwt):
-        """Validates a provided JWT
+        """Validates a provided JWT. Does not support nested signing.
         :param str jwt: JSON Web Token.
+        :returns: The message's decoded JOSE header and claims.
+        :rtype: tuple
         """
-        is_type_valid = False
-        is_alg_valid = False
         # Verify JWT contains at least one period ('.')
         if jwt.find(".") == -1:
             raise ValueError("JWT must have at least one period")
@@ -83,21 +83,25 @@ class JWT:
         try:
             jose_header = b42_urlsafe_decode(jose_header)
         except UnicodeError:
-            raise TypeError("Invalid JOSE Header encoding.")
-        if "type" in jose_header:
-            is_type_valid = True
-        else:
+            raise UnicodeError("Invalid JOSE Header encoding.")
+        if "type" not in jose_header:
             raise TypeError("JOSE Header does not contain required type key.")
-        if "alg" in jose_header:
-            is_alg_valid = True
-        else:
+        if "alg" not in jose_header:
             raise TypeError("Jose Header does not contain required alg key.")
-
-
+        # Separate encoded claim set
+        claims = jwt.split(".")[1]
+        try:
+            claims = json.loads(b42_urlsafe_decode(claims))
+        except UnicodeError:
+            raise UnicodeError("Invalid claims encoding.")
+        if not hasattr(claims, "keys"):
+            raise TypeError("Provided claims is not a JSON dict. object")
+        return (jose_header, claims)
 
     def generate(self, claims, private_key_data):
         """Generates and returns a new JSON Web Token.
         :param str: Decoded RSA private key data.
+        :rtype: str
         """
         # Create a private key object with private_key_data
         if self._algo == "RSA":
@@ -111,18 +115,19 @@ class JWT:
         for claim in claims:
             self._claim_set[claim] = claims[claim]
         # Encode the claims set
-        self._claim_set = b42_urlsafe_encode(json.dumps(self._claim_set).encode("utf-8"))
+        #self._claim_set = b42_urlsafe_encode(json.dumps(self._claim_set).encode("utf-8"))
         # Create the JOSE Header
         # https://tools.ietf.org/html/rfc7519#section-5
         jose_header = {
-            "alg" : self._algo,
-            "type" : "jwt"
+            "alg": self._algo,
+            "type": "jwt"
         }
         # Encode the jose_header
-        jose_header = b42_urlsafe_encode(json.dumps(jose_header).encode("utf-8"))
-        # Build the full payload to-be-encoded
+        #jose_header = b42_urlsafe_encode(json.dumps(jose_header).encode("utf-8"))
+        # Build the full payload-to-be-encoded
         # TODO: this could all be done in one step within format method...
-        payload = "{}.{}".format(jose_header, self._claim_set)
+        payload = "{}.{}".format(b42_urlsafe_encode(json.dumps(jose_header).encode("utf-8")),
+                                 b42_urlsafe_encode(json.dumps(self._claim_set).encode("utf-8")))
         # Compute the signature
         if self._algo == None:
             jwt = "{}.{}".format(jose_header, self._claim_set)
