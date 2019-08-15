@@ -13,7 +13,9 @@ Introduction
     :target: https://travis-ci.com/adafruit/Adafruit_CircuitPython_JWT
     :alt: Build Status
 
-CircuitPython helper library for generation and verification of JSON Web Tokens.
+CircuitPython helper library for generation and verification of JSON Web Tokens (JWT).
+
+JSON Web Tokens are an open, industry standard `RFC 7519 <https://tools.ietf.org/html/rfc7519>`_ method for representing claims securely between two parties.
 
 
 Dependencies
@@ -21,6 +23,7 @@ Dependencies
 This driver depends on:
 
 * `Adafruit CircuitPython <https://github.com/adafruit/circuitpython>`_
+* `Adafruit CircuitPython RSA <https://github.com/adafruit/Adafruit_CircuitPython_RSA>`_
 
 Please ensure all dependencies are available on the CircuitPython filesystem.
 This is easily achieved by downloading
@@ -30,9 +33,6 @@ Installing from PyPI
 =====================
 .. note:: This library is not available on PyPI yet. Install documentation is included
    as a standard element. Stay tuned for PyPI availability!
-
-.. todo:: Remove the above note if PyPI version is/will be available at time of release.
-   If the library is not planned for PyPI, remove the entire 'Installing from PyPI' section.
 
 On supported GNU/Linux systems like the Raspberry Pi, you can install the driver locally `from
 PyPI <https://pypi.org/project/adafruit-circuitpython-jwt/>`_. To install for current user:
