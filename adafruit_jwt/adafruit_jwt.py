@@ -108,20 +108,16 @@ class JWT:
         # Decode the provided claims, starting with Registered Claim Names
         for claim in claims:
             self._claim_set[claim] = claims[claim]
-        # Encode the claims set
-        #self._claim_set = urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8"))
         # Create the JOSE Header
         # https://tools.ietf.org/html/rfc7519#section-5
         jose_header = {
             "alg": self._algo,
             "type": "jwt"
         }
-        # Encode the jose_header
-        #jose_header = urlsafe_b64encode(json.dumps(jose_header).encode("utf-8"))
-        # Build the full payload-to-be-encoded
-        # TODO: this could all be done in one step within format method...
+        # Encode the payload
         payload = "{}.{}".format(self.urlsafe_b64encode(json.dumps(jose_header).encode("utf-8")),
-                                 self.urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8")))
+                                 self.urlsafe_b64encode(
+                                     json.dumps(self._claim_set).encode("utf-8")))
         # Compute the signature
         if self._algo is None:
             jwt = "{}.{}".format(jose_header, self._claim_set)
