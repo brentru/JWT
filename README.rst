@@ -13,7 +13,7 @@ Introduction
     :target: https://travis-ci.com/adafruit/Adafruit_CircuitPython_JWT
     :alt: Build Status
 
-JSON Web Tokens for CircuitPython
+CircuitPython helper library for generation and verification of JSON Web Tokens.
 
 
 Dependencies

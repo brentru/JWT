@@ -1,2 +1,2 @@
 Adafruit-Blinka
-Adafruit-CircuitPython-RSA
+adafruit-circuitpython-rsa

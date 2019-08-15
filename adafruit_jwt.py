@@ -23,7 +23,7 @@
 `adafruit_jwt`
 ================================================================================
 
-JSON Web Tokens for CircuitPython
+CircuitPython helper library for generation and verification of JSON Web Tokens.
 
 
 * Author(s): Brent Rubell

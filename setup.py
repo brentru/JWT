@@ -22,7 +22,7 @@ setup(
     use_scm_version=True,
     setup_requires=['setuptools_scm'],
 
-    description='JSON Web Tokens for CircuitPython',
+    description='CircuitPython helper library for generation and verification of JSON Web Tokens.',
     long_description=long_description,
     long_description_content_type='text/x-rst',
 
@@ -35,7 +35,7 @@ setup(
 
     install_requires=[
         'Adafruit-Blinka',
-        'Adafruit-CircuitPython-RSA'
+        'adafruit-circuitpython-rsa'
     ],
 
     # Choose your license
