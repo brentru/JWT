@@ -41,21 +41,16 @@ Implementation Notes
 * Adafruit's RSA library:
   https://github.com/adafruit/Adafruit_CircuitPython_RSA
 """
-import time
 import json
 from adafruit_rsa import PrivateKey, sign
-from adafruit_jwt.tools.string import b42_urlsafe_encode, b42_urlsafe_decode
 
-try:
-    from binascii import b2a_base64
-except ImportError:
-    from adafruit_rsa.tools.binascii import b2a_base64
-    pass
+# pylint: disable=no-name-in-module
+from adafruit_jwt.tools.string import b42_urlsafe_encode, b42_urlsafe_decode
 
 __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_JWT.git"
 
-
+# pylint: disable=no-member, no-self-argument
 class JWT:
     """JSON Web Token helper for CircuitPython.
         :param str algo: Encryption algorithm used for claims. Can be None.
@@ -68,7 +63,8 @@ class JWT:
         self._algo = algo
         self._claim_set = {}
 
-    def validate(self, jwt):
+
+    def validate(jwt):
         """Validates a provided JWT. Does not support nested signing.
         :param str jwt: JSON Web Token.
         :returns: The message's decoded JOSE header and claims.
@@ -129,7 +125,7 @@ class JWT:
         payload = "{}.{}".format(b42_urlsafe_encode(json.dumps(jose_header).encode("utf-8")),
                                  b42_urlsafe_encode(json.dumps(self._claim_set).encode("utf-8")))
         # Compute the signature
-        if self._algo == None:
+        if self._algo is None:
             jwt = "{}.{}".format(jose_header, self._claim_set)
         elif self._algo == "RSA":
             signature = b42_urlsafe_encode(sign(payload, priv_key, "SHA-256"))
