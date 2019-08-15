@@ -50,7 +50,7 @@ from adafruit_jwt.tools.string import b42_urlsafe_encode, b42_urlsafe_decode
 __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_JWT.git"
 
-# pylint: disable=no-member, no-self-argument
+# pylint: disable=no-member
 class JWT:
     """JSON Web Token helper for CircuitPython.
         :param str algo: Encryption algorithm used for claims. Can be None.
@@ -63,7 +63,7 @@ class JWT:
         self._algo = algo
         self._claim_set = {}
 
-
+    @staticmethod
     def validate(jwt):
         """Validates a provided JWT. Does not support nested signing.
         :param str jwt: JSON Web Token.
