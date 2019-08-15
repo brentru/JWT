@@ -45,7 +45,7 @@ import json
 from adafruit_rsa import PrivateKey, sign
 
 # pylint: disable=no-name-in-module
-from adafruit_jwt.tools.string import b42_urlsafe_encode, b42_urlsafe_decode
+from adafruit_jwt.url_tools import urlsafe_b64encode, urlsafe_b64decode
 
 __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_JWT.git"
@@ -77,7 +77,7 @@ class JWT:
         jose_header = jwt.split(".")[0]
         # Decode JOSE Header
         try:
-            jose_header = b42_urlsafe_decode(jose_header)
+            jose_header = urlsafe_b64decode(jose_header)
         except UnicodeError:
             raise UnicodeError("Invalid JOSE Header encoding.")
         if "type" not in jose_header:
@@ -87,7 +87,7 @@ class JWT:
         # Separate encoded claim set
         claims = jwt.split(".")[1]
         try:
-            claims = json.loads(b42_urlsafe_decode(claims))
+            claims = json.loads(urlsafe_b64decode(claims))
         except UnicodeError:
             raise UnicodeError("Invalid claims encoding.")
         if not hasattr(claims, "keys"):
@@ -111,7 +111,7 @@ class JWT:
         for claim in claims:
             self._claim_set[claim] = claims[claim]
         # Encode the claims set
-        #self._claim_set = b42_urlsafe_encode(json.dumps(self._claim_set).encode("utf-8"))
+        #self._claim_set = urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8"))
         # Create the JOSE Header
         # https://tools.ietf.org/html/rfc7519#section-5
         jose_header = {
@@ -119,15 +119,15 @@ class JWT:
             "type": "jwt"
         }
         # Encode the jose_header
-        #jose_header = b42_urlsafe_encode(json.dumps(jose_header).encode("utf-8"))
+        #jose_header = urlsafe_b64encode(json.dumps(jose_header).encode("utf-8"))
         # Build the full payload-to-be-encoded
         # TODO: this could all be done in one step within format method...
-        payload = "{}.{}".format(b42_urlsafe_encode(json.dumps(jose_header).encode("utf-8")),
-                                 b42_urlsafe_encode(json.dumps(self._claim_set).encode("utf-8")))
+        payload = "{}.{}".format(urlsafe_b64encode(json.dumps(jose_header).encode("utf-8")),
+                                 urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8")))
         # Compute the signature
         if self._algo is None:
             jwt = "{}.{}".format(jose_header, self._claim_set)
         elif self._algo == "RSA":
-            signature = b42_urlsafe_encode(sign(payload, priv_key, "SHA-256"))
+            signature = urlsafe_b64encode(sign(payload, priv_key, "SHA-256"))
             jwt = "{}.{}".format(payload, signature)
         return jwt
