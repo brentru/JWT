@@ -24,7 +24,7 @@
 """
 `url_tools.py`
 ======================================================
-AS920 The Things Network Frequency Plans
+URL-Safe Base64 Tools.
 * Author(s): Johan Brichau, Paul Sokolovsky, Brent Rubell
 """
 
