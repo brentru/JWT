@@ -44,7 +44,7 @@ Implementation Notes
 import time
 import json
 from adafruit_rsa import PrivateKey, sign
-from adafruit_jwt.tools.string import b42_urlsafe_encode
+from adafruit_jwt.tools.string import b42_urlsafe_encode, b42_urlsafe_decode
 
 try:
     from binascii import b2a_base64
@@ -54,11 +54,6 @@ except ImportError:
 
 __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_JWT.git"
-
-# 4.1. Registered Claim names
-CLAIM_SET = {"iss": None, "sub": None, "aud": None,
-              "exp": None, "nbf": None, "iat": None,
-              "jti": None}
 
 class JWT:
     """JSON Web Token helper for CircuitPython.
@@ -70,14 +65,34 @@ class JWT:
 
     def __init__(self, algo="RSA"):
         self._algo = algo
+        self._claim_set = {}
 
-    def create_jwt(self, claims, private_key_data):
-        """Creates and returns a new JSON Web Token.
+
+    def validate(self, jwt):
+        """Validates a provided JWT
+        :param str jwt: JSON Web Token.
+        """
+        # Verify JWT contains at least one period ('.')
+        if jwt.find(".") == -1:
+            raise ValueError("JWT must have at least one period")
+        # Separate the encoded JOSE header
+        jose_header = jwt.split(".")[0]
+        # decode b64url
+        jose_header = jose_header.encode('ascii')
+        rem = len(jose_header) % 4
+        if rem > 0:
+            jose_header += b'=' * (4 - rem)
+        data = b42_urlsafe_decode(jose_header)
+        print(data)
+        
+
+
+    def generate(self, claims, private_key_data):
+        """Generates and returns a new JSON Web Token.
         :param str: Decoded RSA private key data.
         """
         # Create a private key object with private_key_data
         if self._algo == "RSA":
-            print("Creating private key...")
             priv_key = PrivateKey(*private_key_data)
         else:
             raise TypeError(
@@ -85,17 +100,10 @@ class JWT:
         # Create a JWT Claims Set containing the provided claims.
         # https://tools.ietf.org/html/rfc7519#section-7.1
         # Decode the provided claims, starting with Registered Claim Names
-        claim = None
         for claim in claims:
-            print(claim)
-            print(CLAIM_SET)
-            if claim in CLAIM_SET:
-                CLAIM_SET[claim] = claims[claim]
-            # Check the Private Claim Names
-            if claim not in CLAIM_SET:
-                CLAIM_SET[claim] = claims[claim]
+            self._claim_set[claim] = claims[claim]
         # Encode the claims set
-        claim_set = b42_urlsafe_encode(json.dumps(CLAIM_SET).encode("utf-8"))
+        self._claim_set = b42_urlsafe_encode(json.dumps(self._claim_set).encode("utf-8"))
         # Create the JOSE Header
         # https://tools.ietf.org/html/rfc7519#section-5
         jose_header = {
@@ -106,13 +114,11 @@ class JWT:
         jose_header = b42_urlsafe_encode(json.dumps(jose_header).encode("utf-8"))
         # Build the full payload to-be-encoded
         # TODO: this could all be done in one step within format method...
-        payload = "{}.{}".format(jose_header, claim_set)
+        payload = "{}.{}".format(jose_header, self._claim_set)
         # Compute the signature
         if self._algo == None:
-            jwt = "{}.{}".format(jose_header, claim_set)
+            jwt = "{}.{}".format(jose_header, self._claim_set)
         elif self._algo == "RSA":
             signature = b42_urlsafe_encode(sign(payload, priv_key, "SHA-256"))
             jwt = "{}.{}".format(payload, signature)
-        print("generating..")
-        print("JWT: ", jwt)
         return jwt
