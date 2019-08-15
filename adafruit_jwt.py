@@ -33,21 +33,64 @@ Implementation Notes
 
 **Hardware:**
 
-.. todo:: Add links to any specific hardware product page(s), or category page(s). Use unordered list & hyperlink rST
-   inline format: "* `Link Text <url>`_"
-
 **Software and Dependencies:**
 
 * Adafruit CircuitPython firmware for the supported boards:
   https://github.com/adafruit/circuitpython/releases
 
-.. todo:: Uncomment or remove the Bus Device and/or the Register library dependencies based on the library's use of either.
-
-# * Adafruit's Bus Device library: https://github.com/adafruit/Adafruit_CircuitPython_BusDevice
-# * Adafruit's Register library: https://github.com/adafruit/Adafruit_CircuitPython_Register
+* Adafruit's RSA library:
+  https://github.com/adafruit/Adafruit_CircuitPython_RSA
 """
+import time
+import json
+from adafruit_rsa import PrivateKey, sign
+from adafruit_jwt.tools import string
 
-# imports
+try:
+    from binascii import b2a_base64
+except ImportError:
+    from adafruit_rsa.tools.binascii import b2a_base64
+    pass
 
 __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_JWT.git"
+
+# 4.1. Registered Claim names
+reg_claims = {"iss", "sub", "aud",
+              "exp", "nbf", "iat",
+              "jti"}
+
+class JWT:
+    """JSON Web Token helper for CircuitPython.
+        :param dict claims: JSON object whose members are the
+                            claims conveyed by the JWT.
+        :param str algo: Encryption algorithm used for claims. Can be None.
+    Warning: JWTs are credentials, which can grant access to resources.
+                Be careful where you paste them!
+
+    """
+    def __init__(self, claims, algo="RSA"):
+        self._claims = claims
+        self._algo =algo
+        # 4.1. Registered Claim Names
+        self._iss = None
+        self._sub = None
+        self._aud = None
+        self._exp = None
+        self._nbf = None
+        self._iat = None
+        self._jti = None
+    
+    def create_jwt(self, private_key_data):
+        """Creates and returns a new JSON Web Token.
+        :param str: Decoded RSA private key data.
+        """
+        # Create a private key object with private_key_data
+        if self._algo == "RSA":
+            priv_key = PrivateKey(*self.private_key_data)
+        else:
+            raise TypeError("This library currently only supports RSA private keys.")
+        # Create a JWT Claims Set containing the provided claims.
+        # https://tools.ietf.org/html/rfc7519#section-7.1
+        # Decode the provided claims, starting with Registered Claim Names
+
