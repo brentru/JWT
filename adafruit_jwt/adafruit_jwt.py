@@ -72,19 +72,27 @@ class JWT:
         """Validates a provided JWT
         :param str jwt: JSON Web Token.
         """
+        is_type_valid = False
+        is_alg_valid = False
         # Verify JWT contains at least one period ('.')
         if jwt.find(".") == -1:
             raise ValueError("JWT must have at least one period")
-        # Separate the encoded JOSE header
+        # Separate the encoded JOSE Header
         jose_header = jwt.split(".")[0]
-        # decode b64url
-        jose_header = jose_header.encode('ascii')
-        rem = len(jose_header) % 4
-        if rem > 0:
-            jose_header += b'=' * (4 - rem)
-        data = b42_urlsafe_decode(jose_header)
-        print(data)
-        
+        # Decode JOSE Header
+        try:
+            jose_header = b42_urlsafe_decode(jose_header)
+        except UnicodeError:
+            raise TypeError("Invalid JOSE Header encoding.")
+        if "type" in jose_header:
+            is_type_valid = True
+        else:
+            raise TypeError("JOSE Header does not contain required type key.")
+        if "alg" in jose_header:
+            is_alg_valid = True
+        else:
+            raise TypeError("Jose Header does not contain required alg key.")
+
 
 
     def generate(self, claims, private_key_data):
