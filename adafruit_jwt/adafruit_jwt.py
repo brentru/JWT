@@ -43,9 +43,8 @@ Implementation Notes
 """
 import json
 from adafruit_rsa import PrivateKey, sign
-
+from adafruit_rsa.tools.binascii import b2a_base64, a2b_base64
 # pylint: disable=no-name-in-module
-from adafruit_jwt.url_tools import urlsafe_b64encode, urlsafe_b64decode
 
 __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_JWT.git"
@@ -63,8 +62,7 @@ class JWT:
         self._algo = algo
         self._claim_set = {}
 
-    @staticmethod
-    def validate(jwt):
+    def validate(self, jwt):
         """Validates a provided JWT. Does not support nested signing.
         :param str jwt: JSON Web Token.
         :returns: The message's decoded JOSE header and claims.
@@ -77,7 +75,7 @@ class JWT:
         jose_header = jwt.split(".")[0]
         # Decode JOSE Header
         try:
-            jose_header = urlsafe_b64decode(jose_header)
+            jose_header = self.urlsafe_b64decode(jose_header)
         except UnicodeError:
             raise UnicodeError("Invalid JOSE Header encoding.")
         if "type" not in jose_header:
@@ -87,7 +85,7 @@ class JWT:
         # Separate encoded claim set
         claims = jwt.split(".")[1]
         try:
-            claims = json.loads(urlsafe_b64decode(claims))
+            claims = json.loads(self.urlsafe_b64decode(claims))
         except UnicodeError:
             raise UnicodeError("Invalid claims encoding.")
         if not hasattr(claims, "keys"):
@@ -122,12 +120,37 @@ class JWT:
         #jose_header = urlsafe_b64encode(json.dumps(jose_header).encode("utf-8"))
         # Build the full payload-to-be-encoded
         # TODO: this could all be done in one step within format method...
-        payload = "{}.{}".format(urlsafe_b64encode(json.dumps(jose_header).encode("utf-8")),
-                                 urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8")))
+        payload = "{}.{}".format(self.urlsafe_b64encode(json.dumps(jose_header).encode("utf-8")),
+                                 self.urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8")))
         # Compute the signature
         if self._algo is None:
             jwt = "{}.{}".format(jose_header, self._claim_set)
         elif self._algo == "RSA":
-            signature = urlsafe_b64encode(sign(payload, priv_key, "SHA-256"))
+            signature = self.urlsafe_b64encode(sign(payload, priv_key, "SHA-256"))
             jwt = "{}.{}".format(payload, signature)
         return jwt
+
+    @staticmethod
+    def _bytes_from_decode_data(str_data):
+        # Types acceptable as binary data
+        bit_types = (bytes, bytearray)
+        if isinstance(str_data, str):
+            try:
+                return str_data.encode('ascii')
+            except:
+                raise ValueError('string argument should contain only ASCII characters')
+        elif isinstance(str_data, bit_types):
+            return str_data
+        else:
+            raise TypeError(
+                "argument should be bytes or ASCII string, not %s" % str_data.__class__.__name__)
+
+    def urlsafe_b64decode(self, payload):
+        """Decode bytes-like object or ASCII string using the URL
+        and filesystem-safe alphabet"""
+        return a2b_base64(self._bytes_from_decode_data(payload)).decode("utf-8")
+
+    def urlsafe_b64encode(self, payload):
+        """Encode bytes-like object using the URL
+        and filesystem-safe alphabet"""
+        return b2a_base64(self._bytes_from_decode_data(payload)).decode("utf-8")
