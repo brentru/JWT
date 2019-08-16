@@ -59,7 +59,44 @@ To install in a virtual environment in your current project:
 Usage Example
 =============
 
-.. todo:: Add a quick, simple example. It and other examples should live in the examples folder and be included in docs/examples.rst.
+JWT Generation
+
+.. code-block:: python
+
+    import adafruit_jwt.adafruit_jwt as JWT
+    # Get private RSA key from a secrets.py file
+    try:
+        from secrets import secrets
+    except ImportError:
+        print("WiFi secrets are kept in secrets.py, please add them there!")
+        raise
+
+    # JWT Claims
+    claims = {"iss": "joe",
+            "exp": 1300819380,
+            "name": "John Doe",
+            "admin": True}
+
+    # Create a JWT Helper with a defined algorithm
+    jwt_helper = JWT.JWT(algo="RSA")
+
+    # Generate a JWT
+    jwt = jwt_helper.generate(claims, secrets["private_key"])
+    print("Generated JWT: ", jwt)
+
+JWT Decoding and Verification
+
+.. code-block:: python
+
+    import adafruit_jwt.adafruit_jwt as JWT
+
+    # Example JWT String
+    jwt = "eyJ0eXBlIjogImp3dCIsICJhbGciOiAiUlNBIn0=.eyJpc3MiOiAiam9lIiwgImV4cCI6IDEzMDA4MTkzODAsICJuYW1lIjogIkpvaG4gRG9lIiwgImFkbWluIjogdHJ1ZX0=
+            .BQV3aeiPgJbxR2/CyLEnVUM+ZGVaHCR2QRKxRtZUeOaVqDv7DMDQFCfF76vBDQAeKeZDzK1a4NndjQxhdzZ4TiPCb+UOB2CtFIhZCmDMMQwuU4UW12LWBogg21rBVVO8AWTcO7Kj9q+wzD8crkdOcq5qCxOFq4/u+gaXh58OYWj/dwaa0YYghz9Qa+gU0YqSuGgMZ97aCLkw37Y4X5yVsqUFtwN
+            dGxhDpFQtdtrxYGcRC1RotvE2C9mKFeu0DaGv6O6JwXkdsNVd2jsFj/b3Ndeh+eIj1Suek2Ebkhkyp/Q9tqz84mkb2ZBREO2AUnsQDSYAFk0XD9HJRsm8F6xlow=="
+    decoded_jwt = jwt_helper.validate(jwt)
+    print('Decoded JWT:\nJOSE Header: {}\nJWT Claims: {}'.format(decoded_jwt[0], decoded_jwt[1]))
+
 
 Contributing
 ============
