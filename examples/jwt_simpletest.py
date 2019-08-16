@@ -1,4 +1,4 @@
-import adafruit_jwt as JWT
+import adafruit_jwt.adafruit_jwt as JWT
 
 # Get private RSA key from a secrets.py file
 try:

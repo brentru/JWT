@@ -43,8 +43,13 @@ Implementation Notes
 """
 import json
 from adafruit_rsa import PrivateKey, sign
-from adafruit_rsa.tools.binascii import b2a_base64, a2b_base64
-# pylint: disable=no-name-in-module
+from adafruit_jwt import string
+
+try:
+    from binascii import b2a_base64
+except ImportError:
+    from adafruit_rsa.tools.binascii import b2a_base64
+
 
 __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_JWT.git"
@@ -60,6 +65,13 @@ class JWT:
 
     def __init__(self, algo="RSA"):
         self._algo = algo
+        self._claim_set = {}
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._algo = None
         self._claim_set = {}
 
     def validate(self, jwt):
@@ -97,12 +109,9 @@ class JWT:
         :param str: Decoded RSA private key data.
         :rtype: str
         """
-        # Create a private key object with private_key_data
-        if self._algo == "RSA":
+        # Allow for unencrypted JWTs
+        if self._algo is not None:
             priv_key = PrivateKey(*private_key_data)
-        else:
-            raise TypeError(
-                "This library currently only supports RSA private keys.")
         # Create a JWT Claims Set containing the provided claims.
         # https://tools.ietf.org/html/rfc7519#section-7.1
         # Decode the provided claims, starting with Registered Claim Names
@@ -110,20 +119,27 @@ class JWT:
             self._claim_set[claim] = claims[claim]
         # Create the JOSE Header
         # https://tools.ietf.org/html/rfc7519#section-5
-        jose_header = {
-            "alg": self._algo,
-            "type": "jwt"
-        }
+        jose_header = {"alg": self._algo, "type": "jwt"}
         # Encode the payload
-        payload = "{}.{}".format(self.urlsafe_b64encode(json.dumps(jose_header).encode("utf-8")),
-                                 self.urlsafe_b64encode(
-                                     json.dumps(self._claim_set).encode("utf-8")))
+        payload = "{}.{}".format(
+            string.urlsafe_b64encode(json.dumps(jose_header).encode("utf-8")),
+            string.urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8")),
+        )
         # Compute the signature
         if self._algo is None:
             jwt = "{}.{}".format(jose_header, self._claim_set)
-        elif self._algo == "RSA":
-            signature = self.urlsafe_b64encode(sign(payload, priv_key, "SHA-256"))
+        elif (
+            self._algo is "RS256"
+            or self._algo is "RS384"
+            or self._algo is "RS512"
+            or self._algo is "RSA"
+        ):
+            signature = string.urlsafe_b64encode(sign(payload, priv_key, "SHA-256"))
             jwt = "{}.{}".format(payload, signature)
+        else:
+            raise TypeError(
+                "Adafruit_JWT is currently only compatible with algorithms within the Adafruit_RSA module."
+            )
         return jwt
 
     @staticmethod
@@ -132,21 +148,18 @@ class JWT:
         bit_types = (bytes, bytearray)
         if isinstance(str_data, str):
             try:
-                return str_data.encode('ascii')
+                return str_data.encode("ascii")
             except:
-                raise ValueError('string argument should contain only ASCII characters')
+                raise ValueError("string argument should contain only ASCII characters")
         elif isinstance(str_data, bit_types):
             return str_data
         else:
             raise TypeError(
-                "argument should be bytes or ASCII string, not %s" % str_data.__class__.__name__)
+                "argument should be bytes or ASCII string, not %s"
+                % str_data.__class__.__name__
+            )
 
     def urlsafe_b64decode(self, payload):
         """Decode bytes-like object or ASCII string using the URL
         and filesystem-safe alphabet"""
         return a2b_base64(self._bytes_from_decode_data(payload)).decode("utf-8")
-
-    def urlsafe_b64encode(self, payload):
-        """Encode bytes-like object using the URL
-        and filesystem-safe alphabet"""
-        return b2a_base64(self._bytes_from_decode_data(payload)).decode("utf-8")
