@@ -38,17 +38,14 @@ Implementation Notes
 * Adafruit CircuitPython firmware for the supported boards:
   https://github.com/adafruit/circuitpython/releases
 
-* Adafruit's RSA library:
-  https://github.com/adafruit/Adafruit_CircuitPython_RSA
+* Adafruit's binascii module:
+  https://github.com/adafruit/Adafruit_CircuitPython_binascii
 """
 import json
 from adafruit_rsa import PrivateKey, sign
 from adafruit_jwt import string
 
-try:
-    from binascii import b2a_base64
-except ImportError:
-    from adafruit_rsa.tools.binascii import b2a_base64
+from adafruit_binascii import b2a_base64
 
 
 __version__ = "0.0.0-auto.0"
