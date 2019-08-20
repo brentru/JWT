@@ -59,18 +59,6 @@ class JWT:
     :param str algo: Encryption algorithm used for claims. Can be None.
 
     """
-
-    def __init__(self, algo="RSA256"):
-        self._algo = algo
-        self._claim_set = {}
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self._algo = None
-        self._claim_set = {}
-
     @staticmethod
     def validate(jwt):
         """Validates a provided JWT. Does not support nested signing.
@@ -102,35 +90,32 @@ class JWT:
             raise TypeError("Provided claims is not a JSON dict. object")
         return (jose_header, claims)
 
-    def generate(self, claims, private_key_data):
+    @staticmethod
+    def generate(claims, private_key_data=None, algo=None):
         """Generates and returns a new JSON Web Token.
         :param dict claims: JWT claims set
         :param str private_key_data: Decoded RSA private key data.
         :rtype: str
         """
         # Allow for unencrypted JWTs
-        if self._algo is not None:
+        if algo is not None:
             priv_key = PrivateKey(*private_key_data)
-        # Create a JWT Claims Set containing the provided claims.
-        # https://tools.ietf.org/html/rfc7519#section-7.1
-        # Decode the provided claims, starting with Registered Claim Names
-        for claim in claims:
-            self._claim_set[claim] = claims[claim]
         # Create the JOSE Header
         # https://tools.ietf.org/html/rfc7519#section-5
-        jose_header = {"alg": self._algo, "type": "jwt"}
+        jose_header = {"alg": algo, "type": "jwt"}
         # Encode the payload
         payload = "{}.{}".format(
             STRING_TOOLS.urlsafe_b64encode(json.dumps(jose_header).encode("utf-8")),
-            STRING_TOOLS.urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8")),
+            STRING_TOOLS.urlsafe_b64encode(json.dumps(claims).encode("utf-8")),
         )
+        print(payload)
         # Compute the signature
-        if self._algo is None:
-            jwt = "{}.{}".format(jose_header, self._claim_set)
-        elif (self._algo == "RS256"
-              or self._algo == "RS384"
-              or self._algo == "RS512"
-              or self._algo == "RSA"):
+        if algo is None:
+            jwt = "{}.{}".format(jose_header, claims)
+        elif (algo == "RS256"
+              or algo == "RS384"
+              or algo == "RS512"
+              or algo == "RSA"):
             signature = STRING_TOOLS.urlsafe_b64encode(
                 sign(payload, priv_key, "SHA-256")
             )
