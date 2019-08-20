@@ -38,14 +38,14 @@ Implementation Notes
 * Adafruit CircuitPython firmware for the supported boards:
   https://github.com/adafruit/circuitpython/releases
 
-* Adafruit's binascii module:
-  https://github.com/adafruit/Adafruit_CircuitPython_binascii
+* Adafruit's RSA library:
+  https://github.com/adafruit/Adafruit_CircuitPython_RSA
 """
+import io
 import json
 from adafruit_rsa import PrivateKey, sign
-from adafruit_jwt import string
 
-from adafruit_binascii import b2a_base64
+from adafruit_binascii import b2a_base64, a2b_base64
 
 
 __version__ = "0.0.0-auto.0"
@@ -53,14 +53,13 @@ __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_JWT.git"
 
 # pylint: disable=no-member
 class JWT:
-    """JSON Web Token helper for CircuitPython.
-        :param str algo: Encryption algorithm used for claims. Can be None.
-    Warning: JWTs are credentials, which can grant access to resources.
-                Be careful where you paste them!
+    """JSON Web Token helper for CircuitPython. Warning: JWTs are
+    credentials, which can grant access to resources. Be careful
+    where you paste them!
+    :param str algo: Encryption algorithm used for claims. Can be None.
 
     """
-
-    def __init__(self, algo="RSA"):
+    def __init__(self, algo="RSA256"):
         self._algo = algo
         self._claim_set = {}
 
@@ -84,7 +83,7 @@ class JWT:
         jose_header = jwt.split(".")[0]
         # Decode JOSE Header
         try:
-            jose_header = self.urlsafe_b64decode(jose_header)
+            jose_header = string_tools.urlsafe_b64decode(jose_header)
         except UnicodeError:
             raise UnicodeError("Invalid JOSE Header encoding.")
         if "type" not in jose_header:
@@ -94,7 +93,7 @@ class JWT:
         # Separate encoded claim set
         claims = jwt.split(".")[1]
         try:
-            claims = json.loads(self.urlsafe_b64decode(claims))
+            claims = json.loads(string_tools.urlsafe_b64decode(claims))
         except UnicodeError:
             raise UnicodeError("Invalid claims encoding.")
         if not hasattr(claims, "keys"):
@@ -103,7 +102,8 @@ class JWT:
 
     def generate(self, claims, private_key_data):
         """Generates and returns a new JSON Web Token.
-        :param str: Decoded RSA private key data.
+        :param dict claims: JWT claims set
+        :param str private_key_data: Decoded RSA private key data.
         :rtype: str
         """
         # Allow for unencrypted JWTs
@@ -119,8 +119,8 @@ class JWT:
         jose_header = {"alg": self._algo, "type": "jwt"}
         # Encode the payload
         payload = "{}.{}".format(
-            string.urlsafe_b64encode(json.dumps(jose_header).encode("utf-8")),
-            string.urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8")),
+            string_tools.urlsafe_b64encode(json.dumps(jose_header).encode("utf-8")),
+            string_tools.urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8")),
         )
         # Compute the signature
         if self._algo is None:
@@ -131,7 +131,7 @@ class JWT:
             or self._algo is "RS512"
             or self._algo is "RSA"
         ):
-            signature = string.urlsafe_b64encode(sign(payload, priv_key, "SHA-256"))
+            signature = string_tools.urlsafe_b64encode(sign(payload, priv_key, "SHA-256"))
             jwt = "{}.{}".format(payload, signature)
         else:
             raise TypeError(
@@ -139,7 +139,37 @@ class JWT:
             )
         return jwt
 
-    @staticmethod
+class string_tools():
+    """Tools and helpers for b64 string encoding.
+    """
+    # Some strings for ctype-style character classification
+    whitespace = ' \t\n\r\v\f'
+    ascii_lowercase = 'abcdefghijklmnopqrstuvwxyz'
+    ascii_uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    ascii_letters = ascii_lowercase + ascii_uppercase
+    digits = '0123456789'
+    hexdigits = digits + 'abcdef' + 'ABCDEF'
+    octdigits = '01234567'
+    punctuation = """!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""
+    printable = digits + ascii_letters + punctuation + whitespace
+
+    def urlsafe_b64encode(payload):
+        """Encode bytes-like object using the URL- and filesystem-safe alphabet,
+        which substitutes - instead of + and _ instead of / in
+        the standard Base64 alphabet, and return the encoded bytes. 
+        :param bytes payload: bytes-like object.
+        """
+        return string_tools.translate(
+            b2a_base64(payload)[:-1].decode("utf-8"), {ord("+"): "-", ord("/"): "_"}
+        )
+
+    def urlsafe_b64decode(payload):
+        """Decode bytes-like object or ASCII string using the URL
+        and filesystem-safe alphabet
+        :param bytes payload: bytes-like object or ASCII string
+        """
+        return a2b_base64(string_tools._bytes_from_decode_data(payload)).decode("utf-8")
+
     def _bytes_from_decode_data(str_data):
         # Types acceptable as binary data
         bit_types = (bytes, bytearray)
@@ -156,7 +186,23 @@ class JWT:
                 % str_data.__class__.__name__
             )
 
-    def urlsafe_b64decode(self, payload):
-        """Decode bytes-like object or ASCII string using the URL
-        and filesystem-safe alphabet"""
-        return a2b_base64(self._bytes_from_decode_data(payload)).decode("utf-8")
+    # Port of CPython str.translate to Pure-Python by Johan Brichau, 2019
+    # https://github.com/jbrichau/TrackingPrototype/blob/master/Device/lib/string.py
+    def translate(s, map):
+        """Return a copy of the string in which each character
+        has been mapped through the given translation table. 
+        :param string s: String to-be-character-mapped.
+        :param dict map: Translation table.
+        """
+        sb = io.StringIO()
+        for c in s:
+            v = ord(c)
+            if v in map:
+                v = map[v]
+                if isinstance(v, int):
+                    sb.write(chr(v))
+                elif v is not None:
+                    sb.write(v)
+            else:
+                sb.write(c)
+        return sb.getvalue()
