@@ -59,6 +59,7 @@ class JWT:
     :param str algo: Encryption algorithm used for claims. Can be None.
 
     """
+
     def __init__(self, algo="RSA256"):
         self._algo = algo
         self._claim_set = {}
@@ -70,7 +71,8 @@ class JWT:
         self._algo = None
         self._claim_set = {}
 
-    def validate(self, jwt):
+    @staticmethod
+    def validate(jwt):
         """Validates a provided JWT. Does not support nested signing.
         :param str jwt: JSON Web Token.
         :returns: The message's decoded JOSE header and claims.
@@ -83,7 +85,7 @@ class JWT:
         jose_header = jwt.split(".")[0]
         # Decode JOSE Header
         try:
-            jose_header = string_tools.urlsafe_b64decode(jose_header)
+            jose_header = STRING_TOOLS.urlsafe_b64decode(jose_header)
         except UnicodeError:
             raise UnicodeError("Invalid JOSE Header encoding.")
         if "type" not in jose_header:
@@ -93,7 +95,7 @@ class JWT:
         # Separate encoded claim set
         claims = jwt.split(".")[1]
         try:
-            claims = json.loads(string_tools.urlsafe_b64decode(claims))
+            claims = json.loads(STRING_TOOLS.urlsafe_b64decode(claims))
         except UnicodeError:
             raise UnicodeError("Invalid claims encoding.")
         if not hasattr(claims, "keys"):
@@ -119,57 +121,62 @@ class JWT:
         jose_header = {"alg": self._algo, "type": "jwt"}
         # Encode the payload
         payload = "{}.{}".format(
-            string_tools.urlsafe_b64encode(json.dumps(jose_header).encode("utf-8")),
-            string_tools.urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8")),
+            STRING_TOOLS.urlsafe_b64encode(json.dumps(jose_header).encode("utf-8")),
+            STRING_TOOLS.urlsafe_b64encode(json.dumps(self._claim_set).encode("utf-8")),
         )
         # Compute the signature
         if self._algo is None:
             jwt = "{}.{}".format(jose_header, self._claim_set)
-        elif (
-            self._algo is "RS256"
-            or self._algo is "RS384"
-            or self._algo is "RS512"
-            or self._algo is "RSA"
-        ):
-            signature = string_tools.urlsafe_b64encode(sign(payload, priv_key, "SHA-256"))
+        elif (self._algo == "RS256"
+              or self._algo == "RS384"
+              or self._algo == "RS512"
+              or self._algo == "RSA"):
+            signature = STRING_TOOLS.urlsafe_b64encode(
+                sign(payload, priv_key, "SHA-256")
+            )
             jwt = "{}.{}".format(payload, signature)
         else:
-            raise TypeError(
-                "Adafruit_JWT is currently only compatible with algorithms within the Adafruit_RSA module."
-            )
+            raise TypeError("Adafruit_JWT is currently only compatible with algorithms within"
+                            "the Adafruit_RSA module.")
         return jwt
 
-class string_tools():
-    """Tools and helpers for b64 string encoding.
+# pylint: disable=invalid-name
+class STRING_TOOLS:
+    """Tools and helpers for URL-safe
+    base64 string encoding.
     """
+
     # Some strings for ctype-style character classification
-    whitespace = ' \t\n\r\v\f'
-    ascii_lowercase = 'abcdefghijklmnopqrstuvwxyz'
-    ascii_uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    whitespace = " \t\n\r\v\f"
+    ascii_lowercase = "abcdefghijklmnopqrstuvwxyz"
+    ascii_uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     ascii_letters = ascii_lowercase + ascii_uppercase
-    digits = '0123456789'
-    hexdigits = digits + 'abcdef' + 'ABCDEF'
-    octdigits = '01234567'
-    punctuation = """!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""
+    digits = "0123456789"
+    hexdigits = digits + "abcdef" + "ABCDEF"
+    octdigits = "01234567"
+    punctuation = r"""!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~"""
     printable = digits + ascii_letters + punctuation + whitespace
 
+    @staticmethod
     def urlsafe_b64encode(payload):
         """Encode bytes-like object using the URL- and filesystem-safe alphabet,
         which substitutes - instead of + and _ instead of / in
-        the standard Base64 alphabet, and return the encoded bytes. 
+        the standard Base64 alphabet, and return the encoded bytes.
         :param bytes payload: bytes-like object.
         """
-        return string_tools.translate(
+        return STRING_TOOLS.translate(
             b2a_base64(payload)[:-1].decode("utf-8"), {ord("+"): "-", ord("/"): "_"}
         )
 
+    @staticmethod
     def urlsafe_b64decode(payload):
         """Decode bytes-like object or ASCII string using the URL
         and filesystem-safe alphabet
         :param bytes payload: bytes-like object or ASCII string
         """
-        return a2b_base64(string_tools._bytes_from_decode_data(payload)).decode("utf-8")
+        return a2b_base64(STRING_TOOLS._bytes_from_decode_data(payload)).decode("utf-8")
 
+    @staticmethod
     def _bytes_from_decode_data(str_data):
         # Types acceptable as binary data
         bit_types = (bytes, bytearray)
@@ -188,17 +195,18 @@ class string_tools():
 
     # Port of CPython str.translate to Pure-Python by Johan Brichau, 2019
     # https://github.com/jbrichau/TrackingPrototype/blob/master/Device/lib/string.py
-    def translate(s, map):
+    @staticmethod
+    def translate(s, table):
         """Return a copy of the string in which each character
-        has been mapped through the given translation table. 
-        :param string s: String to-be-character-mapped.
-        :param dict map: Translation table.
+        has been mapped through the given translation table.
+        :param string s: String to-be-character-table.
+        :param dict table: Translation table.
         """
         sb = io.StringIO()
         for c in s:
             v = ord(c)
-            if v in map:
-                v = map[v]
+            if v in table:
+                v = table[v]
                 if isinstance(v, int):
                     sb.write(chr(v))
                 elif v is not None:
